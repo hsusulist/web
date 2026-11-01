@@ -1,0 +1,6 @@
+data/packages.json
+data/users.json
+data/users.json.*.tmp
+data/artifacts/
+data/*.tmp
+node_modules/
