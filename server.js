@@ -17,7 +17,7 @@ const path = require('path');
 const crypto = require('crypto');
 
 const ROOT = __dirname;
-const PUBLIC_DIR = path.join(ROOT, 'public');
+const PUBLIC_DIR = path.join(ROOT, 'public', 'public');
 const DATA_DIR = path.join(ROOT, 'data');
 const DB_FILE = path.join(DATA_DIR, 'packages.json');
 const USERS_FILE = path.join(DATA_DIR, 'users.json');

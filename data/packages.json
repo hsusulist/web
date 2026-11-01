@@ -1,0 +1,346 @@
+[
+  {
+    "slug": "window",
+    "name": "window",
+    "importName": "window",
+    "summary": "SDL2 graphics, input, gamepads and sound in a handful of calls. Put a real window on screen without leaving LUC.",
+    "version": "1.4.2",
+    "license": "Apache-2.0",
+    "repo": "https://github.com/hsusulist/luc/tree/main/src",
+    "homepage": "https://github.com/hsusulist/luc",
+    "author": {
+      "name": "hsusulist",
+      "handle": "hsusulist",
+      "url": "https://github.com/hsusulist",
+      "verified": true
+    },
+    "official": true,
+    "featured": true,
+    "tags": [
+      "graphics",
+      "gamedev",
+      "sound",
+      "sdl2"
+    ],
+    "accent": "#ff7a18",
+    "size": "1.2 MB",
+    "readme": "## window\n\nSDL2 graphics and sound for LUC. One import, then draw.\n\n```luc\nimport window(\"w\")\n\ncreate x, vx = 100, 200\n\nw.go(\"Hello LUC\", 800, 600, function(dt)\n    x = x + vx * dt\n    if x > 780 or x < 20 then vx = -vx end\n\n    w.clear(\"navy\")\n    w.circle(x, 300, 30, \"yellow\")\n    w.text_center(\"Xin chao LUC!\", 100, \"white\", 32)\nend)\n```\n\n### What is inside\n\n- Shapes: `pixel`, `line`, `rect`, `circle`, `arc`, `ellipse`, `triangle`, `polygon`\n- Text and sprites: `text`, `text_center`, `image`, `sprite`\n- Input: keyboard, mouse, wheel, text input, touch and gamepads\n- Sound: `play`, `stop`, `pause_sound` for WAV, OGG and MP3\n- Window control: fullscreen, resize, minimize, clipboard, message boxes\n\n### Install\n\n```sh\nluc install window\n```\n\nRequires the `window` component from the LUC installer. Rendering runs on the\nmain thread and the callback receives the delta time in seconds.",
+    "weeklyDownloads": 15210,
+    "totalDownloads": 284900,
+    "downloadsHistory": [
+      11864,
+      13081,
+      12320,
+      14450,
+      15210,
+      13993,
+      16427
+    ],
+    "publishedAt": "2026-03-14",
+    "updatedAt": "2026-09-18",
+    "dependencies": {},
+    "versions": [
+      {
+        "version": "1.4.2",
+        "date": "2026-09-18",
+        "notes": "Gamepad hot-plug fixes, stable touch IDs, faster sprite batching."
+      },
+      {
+        "version": "1.4.0",
+        "date": "2026-07-02",
+        "notes": "Added OGG/MP3 streaming and display scaling helpers."
+      },
+      {
+        "version": "1.3.1",
+        "date": "2026-05-19",
+        "notes": "Clipboard, message boxes and open_url."
+      }
+    ],
+    "ownerKey": "official",
+    "artifact": ""
+  },
+  {
+    "slug": "ai",
+    "name": "ai",
+    "importName": "ai",
+    "summary": "A mini-PyTorch for LUC: tensors, autograd, layers, optimizers, tokenizers and a trainable language model on CPU.",
+    "version": "1.2.0",
+    "license": "Apache-2.0",
+    "repo": "https://github.com/hsusulist/luc/tree/main/luc_modules",
+    "homepage": "https://github.com/hsusulist/luc",
+    "author": {
+      "name": "hsusulist",
+      "handle": "hsusulist",
+      "url": "https://github.com/hsusulist",
+      "verified": true
+    },
+    "official": true,
+    "featured": true,
+    "tags": [
+      "ai",
+      "machine-learning",
+      "tensor",
+      "neural-network"
+    ],
+    "accent": "#8b5cf6",
+    "size": "452 KB",
+    "readme": "## ai\n\nLanternl, a tiny PyTorch, ported to LUC. Logic unchanged — just `.luc` files.\n\n```luc\nimport ai\n\ncreate data = [\n    {\"input\": [0], \"target\": [1]},\n    {\"input\": [1], \"target\": [3]},\n    {\"input\": [2], \"target\": [5]},\n    {\"input\": [3], \"target\": [7]},\n]\n\ncreate t = ai.Train({\n    \"layers\": {1: 1, 2: 8, 3: 1},\n    \"data\": data,\n    \"epochs\": 300,\n    \"lr\": 0.01,\n    \"log_every\": 100\n})\nt:run()\nt:evaluate(data)\n```\n\n### Text models\n\n```luc\nimport ai\n\ncreate model = ai.LMTrain {\n    data = \"hello world, this is luc ai!\",\n    preset = \"auto\",\n    epochs = 300\n}\nmodel:run()\nprint(model:generate(\"hello\", 20))\n```\n\n### Modules\n\n`nn`, `optim`, `rope`, `positional`, `tokenizer`, `transformer`, `matrix`,\n`tensor`, `forge` and `data`. GPU modules auto-disable when no bridge is\npresent, so everything above runs on CPU with no setup.\n\n### Install\n\n```sh\nluc install ai\n```\n\nPut `luc_modules/` next to your script, or point `LUC_PATH` at it.",
+    "weeklyDownloads": 12480,
+    "totalDownloads": 187300,
+    "downloadsHistory": [
+      9734,
+      10733,
+      10109,
+      11856,
+      12480,
+      11482,
+      13478
+    ],
+    "publishedAt": "2026-04-02",
+    "updatedAt": "2026-09-18",
+    "dependencies": {},
+    "versions": [
+      {
+        "version": "1.2.0",
+        "date": "2026-09-18",
+        "notes": "LMTrain CPU preset is ~2x faster; new tokenizer training options."
+      },
+      {
+        "version": "1.1.0",
+        "date": "2026-06-11",
+        "notes": "Added forge autograd engine and rope embeddings."
+      },
+      {
+        "version": "1.0.0",
+        "date": "2026-04-02",
+        "notes": "First stable port of lanternl to LUC."
+      }
+    ],
+    "ownerKey": "official",
+    "artifact": ""
+  },
+  {
+    "slug": "discord",
+    "name": "discord",
+    "importName": "discord",
+    "summary": "Build chat and slash-command bots with embeds, buttons and menus. Batteries included, token required.",
+    "version": "0.6.0",
+    "license": "Apache-2.0",
+    "repo": "https://github.com/hsusulist/luc/tree/main/luc_modules",
+    "homepage": "",
+    "author": {
+      "name": "hsusulist",
+      "handle": "hsusulist",
+      "url": "https://github.com/hsusulist",
+      "verified": true
+    },
+    "official": true,
+    "featured": false,
+    "tags": [
+      "bots",
+      "discord",
+      "chat"
+    ],
+    "accent": "#5865f2",
+    "size": "34 KB",
+    "readme": "## discord\n\nChat bots, slash commands, embeds and buttons.\n\n```luc\nimport discord(\"bot\")\n\ncreate token = bot.token(\"TOKEN_HERE\")\n\nbot:run(token)\nwhile bot.run do\n    create cmd = bot.prefix(\"!\")\n    if cmd == \"ping\" then\n        bot.msg:send(\"pong!\")\n    end\nend\n```\n\n### Setup\n\n1. Create a bot at `discord.com/developers/applications`\n2. Turn on **MESSAGE CONTENT INTENT** on the Bot page\n3. Invite it with the `bot` scope\n4. Paste the token and run:\n\n```sh\nluc install discord\nluc bot.luc\n```\n\n> Never commit a bot token. Read it with `os.getenv(\"DISCORD_TOKEN\")` instead.\n\nSlash commands, embeds and buttons are available through `bot.slash`,\n`bot.embed` and `bot.button`.",
+    "weeklyDownloads": 8340,
+    "totalDownloads": 96300,
+    "downloadsHistory": [
+      6505,
+      7172,
+      6755,
+      7923,
+      8340,
+      7673,
+      9007
+    ],
+    "publishedAt": "2026-03-20",
+    "updatedAt": "2026-09-21",
+    "dependencies": {
+      "net": "^1.1.0"
+    },
+    "versions": [
+      {
+        "version": "0.6.0",
+        "date": "2026-09-21",
+        "notes": "Discord embeds and button components."
+      },
+      {
+        "version": "0.5.0",
+        "date": "2026-08-04",
+        "notes": "Slash commands and autocomplete."
+      },
+      {
+        "version": "0.4.0",
+        "date": "2026-05-23",
+        "notes": "Gateway reconnect and rate limits."
+      }
+    ],
+    "ownerKey": "official",
+    "artifact": ""
+  },
+  {
+    "slug": "net",
+    "name": "net",
+    "importName": "net",
+    "summary": "TCP, HTTP and WebSocket client + server. Fetch a page in one line, serve one in ten.",
+    "version": "1.1.0",
+    "license": "Apache-2.0",
+    "repo": "https://github.com/hsusulist/luc/tree/main/src",
+    "homepage": "",
+    "author": {
+      "name": "hsusulist",
+      "handle": "hsusulist",
+      "url": "https://github.com/hsusulist",
+      "verified": true
+    },
+    "official": true,
+    "featured": false,
+    "tags": [
+      "http",
+      "networking",
+      "websocket",
+      "server"
+    ],
+    "accent": "#38d996",
+    "size": "96 KB",
+    "readme": "## net\n\nTCP, HTTP and WebSockets, built into the interpreter.\n\n```luc\nimport net(\"n\")\n\ncreate page, code = n.get(\"https://example.com\")\nprint(code)\nprint(string.len(page))\n```\n\n### POST JSON\n\n```luc\nimport net(\"n\")\nimport json\n\ncreate body = json.encode({\"name\": \"luc\"})\ncreate res, code = n.post(\"https://httpbin.org/post\", body)\nprint(code)\n```\n\n### Server\n\n```luc\nimport net(\"n\")\n\nn.serve(8080, function(req)\n    return 200, \"hello from luc\"\nend)\n```\n\nTLS certificates are verified by default. See `demos/net_libaries/` for a\nmulti-client chat server.",
+    "weeklyDownloads": 9180,
+    "totalDownloads": 121400,
+    "downloadsHistory": [
+      7160,
+      7895,
+      7436,
+      8721,
+      9180,
+      8446,
+      9914
+    ],
+    "publishedAt": "2026-02-28",
+    "updatedAt": "2026-08-30",
+    "dependencies": {},
+    "versions": [
+      {
+        "version": "1.1.0",
+        "date": "2026-08-30",
+        "notes": "WebSocket fragmentation, server send helpers."
+      },
+      {
+        "version": "1.0.0",
+        "date": "2026-05-10",
+        "notes": "TLS by default, HTTP/1.1 keep-alive."
+      }
+    ],
+    "ownerKey": "official",
+    "artifact": ""
+  },
+  {
+    "slug": "libs",
+    "name": "libs",
+    "importName": "libs",
+    "summary": "The user-library system. Declare a part with make, collect parts with get, and ship one .luic file with pack.",
+    "version": "0.3.1",
+    "license": "Apache-2.0",
+    "repo": "https://github.com/hsusulist/luc/tree/main/demos/libs_libaries",
+    "homepage": "",
+    "author": {
+      "name": "hsusulist",
+      "handle": "hsusulist",
+      "url": "https://github.com/hsusulist",
+      "verified": true
+    },
+    "official": true,
+    "featured": true,
+    "tags": [
+      "libraries",
+      "tooling",
+      "packaging"
+    ],
+    "accent": "#ffb066",
+    "size": "core",
+    "readme": "## libs\n\nThe user-library system is part of the core interpreter. Import it, then use\n`make`, `get`, `pack` and `command`.\n\n### Write a part\n\n```luc\nimport libs\nmake add\n\ncreate function plus(a, b)\n    return a + b\nend\n\ncreate tag = \"A\"\n```\n\nEvery top-level `create` is exported automatically.\n\n### Bundle parts\n\n```luc\nimport libs\nget add, sub\npack mymath\n```\n\nThis writes `mymath.luic` next to your script. Share that single file.\n\n### Use a bundle\n\n```luc\nimport libs\nimport add from mymath\nimport plus from mymath\n\nprint(add.plus(3, 4))  -- 7\nprint(plus(1, 2))      -- 3\n```\n\n`get` searches next to your script, the working directory, `luc_modules/`\nand `LUC_PATH`.",
+    "weeklyDownloads": 21600,
+    "totalDownloads": 412700,
+    "downloadsHistory": [
+      16848,
+      18576,
+      17496,
+      20520,
+      21600,
+      19872,
+      23328
+    ],
+    "publishedAt": "2026-02-10",
+    "updatedAt": "2026-08-12",
+    "dependencies": {},
+    "versions": [
+      {
+        "version": "0.3.1",
+        "date": "2026-08-12",
+        "notes": "pack now writes next to the script; faster get lookup."
+      },
+      {
+        "version": "0.3.0",
+        "date": "2026-06-02",
+        "notes": "import-from for whole parts and single symbols."
+      }
+    ],
+    "ownerKey": "official",
+    "artifact": ""
+  },
+  {
+    "slug": "json",
+    "name": "json",
+    "importName": "json",
+    "summary": "Fast encode and decode with stable key order, pretty printing and safe number handling.",
+    "version": "0.4.0",
+    "license": "Apache-2.0",
+    "repo": "https://github.com/hsusulist/luc/tree/main/src",
+    "homepage": "",
+    "author": {
+      "name": "hsusulist",
+      "handle": "hsusulist",
+      "url": "https://github.com/hsusulist",
+      "verified": true
+    },
+    "official": true,
+    "featured": false,
+    "tags": [
+      "json",
+      "parsing",
+      "data"
+    ],
+    "accent": "#5aa9ff",
+    "size": "core",
+    "readme": "## json\n\nJSON in and out, no dependency required.\n\n```luc\nimport json\n\ncreate doc = json.decode('{\"name\": \"luc\", \"fast\": true}')\nprint(doc.name)\nprint(json.encode(doc))\nprint(json.pretty(doc))\n```\n\n`decode` returns lists for arrays and dicts for objects. Invalid input raises\nan error you can catch with `pcall`.",
+    "weeklyDownloads": 6720,
+    "totalDownloads": 88900,
+    "downloadsHistory": [
+      5242,
+      5779,
+      5443,
+      6384,
+      6720,
+      6182,
+      7258
+    ],
+    "publishedAt": "2026-03-01",
+    "updatedAt": "2026-07-14",
+    "dependencies": {},
+    "versions": [
+      {
+        "version": "0.4.0",
+        "date": "2026-07-14",
+        "notes": "Pretty printer and array/object detection."
+      },
+      {
+        "version": "0.3.2",
+        "date": "2026-04-22",
+        "notes": "Correct escapes for control characters."
+      }
+    ],
+    "ownerKey": "official",
+    "artifact": ""
+  }
+]
