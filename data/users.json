@@ -1,13 +1,11 @@
 [
   {
-    "id": "30bc59bc-57ba-472d-bfed-915ccbcc04f9",
+    "id": "e7f8f180-9988-4fed-b1ad-eaf4220f0e71",
     "username": "hsusulist",
     "email": "",
-    "salt": "92424b99c2df89fe782754d113f9bda3",
-    "passwordHash": "7db7ab4bfa37aae04f976c809563378a99cae84b4c4f79e65be9dc012ed046cd2de80cc862df9154e796193de862ce6c686746bd67e21a68aed49d4467b00e11",
+    "salt": "4fb0ff76834be55dfae6e76293683d96",
+    "passwordHash": "8f450abe65096b9760d8c671a11adf18ee0057ed668721941488bb5911b6d1505f268fc7a35c012dec934fa01bd39d4644dd027e41d4909c896f76dda679341f",
     "googleId": "",
-    "createdAt": "2026-11-01T15:31:19.977Z",
-    "avatar": "30bc59bc-57ba-472d-bfed-915ccbcc04f9.png",
-    "avatarVersion": 1
+    "createdAt": "2026-11-02T13:46:06.996Z"
   }
 ]
