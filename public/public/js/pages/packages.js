@@ -35,31 +35,45 @@ const CATEGORIES = [
 ];
 const PAGE_SIZE = 10;
 
-function registryRow(pkg) {
+function registryRow(pkg, index = 0) {
   const href = `#/packages/${encodeURIComponent(pkg.slug)}`;
   const handle = pkg.author.handle || pkg.author.name;
+  const tilt = [-6, 5, -3, 7, -5, 4][index % 6];
   return `
-    <article class="rg-row" style="--accent:${escapeHtml(pkg.accent || '#ef6130')}">
+    <article class="rg-row" style="--accent:${escapeHtml(pkg.accent || '#ef6130')};--tilt:${tilt}deg">
+      <i class="rg-brk rg-brk-tl"></i><i class="rg-brk rg-brk-br"></i>
+      <a class="rg-row-mark" href="${href}" aria-hidden="true" tabindex="-1"><span>${escapeHtml(pkg.name.slice(0, 1).toUpperCase())}</span></a>
       <div class="rg-row-main">
         <h3 class="rg-row-title">
           <a href="${href}">${escapeHtml(pkg.name)}</a>
+          <span class="rg-row-ver">v${escapeHtml(pkg.version)}</span>
           ${pkg.official ? `<span class="rg-badge rg-badge-official">${icon('check', { size: 10 })} official</span>` : ''}
         </h3>
         <p class="rg-row-summary">${escapeHtml(pkg.summary)}</p>
-        ${pkg.tags.length ? `<div class="rg-row-tags">${pkg.tags.slice(0, 5).map((t) => `<button type="button" class="rg-tag" data-tag="${escapeHtml(t)}">${escapeHtml(t)}</button>`).join('')}</div>` : ''}
-        <p class="rg-row-meta">
-          <span class="rg-row-author"><span class="rg-mini-avatar">${escapeHtml(handle.slice(0, 1).toUpperCase())}</span>${escapeHtml(handle)}</span>
-          <span>published <strong>${escapeHtml(pkg.version)}</strong></span>
+        <div class="rg-row-foot">
+          <span class="rg-row-author"><span class="rg-mini-avatar">${escapeHtml(handle.slice(0, 1).toUpperCase())}</span>@${escapeHtml(handle)}</span>
           <span>${escapeHtml(timeAgo(pkg.updatedAt) || formatDate(pkg.updatedAt))}</span>
           <span>${escapeHtml(pkg.license)}</span>
-        </p>
+          ${pkg.tags.slice(0, 4).map((t) => `<button type="button" class="rg-tag" data-tag="${escapeHtml(t)}">#${escapeHtml(t)}</button>`).join('')}
+        </div>
       </div>
       <div class="rg-row-side">
-        <span class="rg-row-dl"><strong>${formatNumber(pkg.weeklyDownloads, true)}</strong> weekly</span>
+        <span class="rg-row-dl"><strong data-weekly="${escapeHtml(pkg.slug)}">${formatNumber(pkg.weeklyDownloads, true)}</strong> / week</span>
         ${sparkline(pkg.downloadsHistory, pkg.accent)}
-        <button class="rg-row-copy" type="button" data-copy data-copy-text="${escapeHtml(installCommand(pkg))}" data-install="${escapeHtml(pkg.slug)}" title="Copy install command">${icon('copy', { size: 13 })}<span>install</span></button>
+        <button class="rg-row-copy" type="button" data-copy data-copy-text="${escapeHtml(installCommand(pkg))}" data-install="${escapeHtml(pkg.slug)}" title="${escapeHtml(installCommand(pkg))}">${icon('copy', { size: 13 })}<span>install</span></button>
       </div>
     </article>`;
+}
+
+function stackSquare(pkg, i) {
+  const cls = ['rg-sq-lime', 'rg-sq-orange', 'rg-sq-cream'][i] || 'rg-sq-cream';
+  return `
+    <a class="rg-sq ${cls}" href="#/packages/${encodeURIComponent(pkg.slug)}">
+      <span class="rg-sq-rank">#${i + 1}</span>
+      ${icon(i === 1 ? 'command' : 'package', { size: 20 })}
+      <b>${escapeHtml(pkg.name.toUpperCase())}</b>
+      <span class="rg-sq-meta">${formatNumber(pkg.weeklyDownloads, true)}/wk · v${escapeHtml(pkg.version)}</span>
+    </a>`;
 }
 
 export function renderPackages(params = {}) {
@@ -67,87 +81,146 @@ export function renderPackages(params = {}) {
     title: 'Packages — the LUC registry',
     description: 'Browse community and official LUC libraries. Search by name, tag or author, then copy a one-line install command.',
     html: `
-      <section class="rg-page" id="registry-page">
-        <div class="rg-wrap">
-          <header class="rg-intro">
-            <div>
-              <p class="rg-eyebrow">05 / REGISTRY</p>
-              <h1>Packages</h1>
-              <p class="rg-lede">Libraries for LUC, published by the community and the core team. Install any of them with one line.</p>
-            </div>
-            <div class="rg-intro-actions">
-              <a class="st-btn st-btn-dark" href="#/publish">${icon('upload', { size: 15 })} Publish a package</a>
-              <a class="st-btn st-btn-ghost" href="#/guide#libraries">${icon('book', { size: 15 })} How it works</a>
-            </div>
-          </header>
+      <div class="rg-page luc-refresh" id="registry-page">
 
-          <div class="rg-columns">
-            <section class="rg-col rg-col-popular" aria-labelledby="rg-popular-h">
-              <h2 id="rg-popular-h" class="rg-col-head rg-line-orange">${icon('zap', { size: 16 })} Popular libraries</h2>
-              <ol class="rg-popular" id="rg-popular">
-                ${'<li class="rg-skel"></li>'.repeat(6)}
-              </ol>
-            </section>
+        <!-- HERO ======================================================= -->
+        <section class="rg-hero">
+          <div class="rg-hero-gridmark" aria-hidden="true">LUC / REGISTRY</div>
+          <div class="rg-hero-inner">
+            <div class="rg-hero-copy">
+              <div class="lr-kicker"><span class="lr-kicker-line"></span>Package registry <span class="lr-version" id="rg-hero-count">— packages</span></div>
+              <h1>Find a package.<br><span>Make it yours.</span></h1>
+              <p class="rg-lede">Libraries for LUC, published by the community and the core team. Read what you install, then pull it in with one line.</p>
 
-            <section class="rg-col rg-col-discover" aria-labelledby="rg-discover-h">
-              <h2 id="rg-discover-h" class="rg-col-head rg-line-amber">${icon('search', { size: 16 })} Discover packages</h2>
-              <div class="rg-discover" id="rg-discover">
-                ${CATEGORIES.map((c) => `
-                  <button type="button" class="rg-cat" data-cat="${c.id}">
-                    ${icon(c.icon, { size: 18 })}
-                    <span>${c.label}</span>
-                    <em data-cat-count="${c.id}">—</em>
-                  </button>`).join('')}
+              <form class="rg-search" id="rg-hero-search" role="search">
+                <i class="rg-brk rg-brk-tl"></i><i class="rg-brk rg-brk-br"></i>
+                ${icon('search', { size: 18 })}
+                <input type="search" id="rg-hero-input" placeholder="Search packages, tags or authors…" autocomplete="off" spellcheck="false" aria-label="Search packages" value="${escapeHtml(params.q || '')}" />
+                <kbd>/</kbd>
+                <button type="submit">Search ${icon('arrow-right', { size: 15 })}</button>
+              </form>
+
+              <div class="rg-hero-tags" id="rg-hero-tags">
+                <span>Try</span>
+                ${['graphics', 'http', 'ai', 'json', 'discord'].map((t) => `<button type="button" class="rg-tag" data-tag="${t}">#${t}</button>`).join('')}
               </div>
-            </section>
+            </div>
 
-            <section class="rg-col rg-col-numbers" aria-labelledby="rg-numbers-h">
-              <h2 id="rg-numbers-h" class="rg-col-head rg-line-lime">${icon('layers', { size: 16 })} By the numbers</h2>
-              <dl class="rg-numbers">
-                <div><dt>Packages</dt><dd id="rg-n-packages">—</dd></div>
-                <div><dt>Downloads · Last week</dt><dd id="rg-n-weekly">—</dd></div>
-                <div><dt>Downloads · All time</dt><dd id="rg-n-total">—</dd></div>
-                <div><dt>Authors</dt><dd id="rg-n-authors">—</dd></div>
-              </dl>
-            </section>
+            <div class="rg-stage" aria-label="Most installed this week">
+              <i class="rg-brk rg-brk-tl"></i><i class="rg-brk rg-brk-tr"></i><i class="rg-brk rg-brk-bl"></i><i class="rg-brk rg-brk-br"></i>
+              <div class="rg-stage-top"><span>TOP THIS WEEK</span><span class="rg-signal"><i></i><i></i><i></i><i></i><i></i><b>LIVE</b></span></div>
+              <div class="rg-stage-code"><span>import</span> libraries<br><span>get</span> what you need<br><span>make</span> something yours</div>
+              <div class="rg-stack" id="rg-stack">
+                <div class="rg-sq rg-sq-lime is-ghost"></div>
+                <div class="rg-sq rg-sq-orange is-ghost"></div>
+                <div class="rg-sq rg-sq-cream is-ghost"></div>
+              </div>
+              <div class="rg-stage-bottom"><span>LUC REGISTRY ${icon('arrow-right', { size: 14 })} YOUR PROJECT</span><span>luc install -p</span></div>
+            </div>
           </div>
 
-          <section class="rg-results" id="rg-results-section" aria-labelledby="rg-results-h">
-            <div class="rg-results-head">
-              <div>
-                <h2 id="rg-results-h">All packages</h2>
-                <p class="rg-count" id="rg-count" aria-live="polite">Loading…</p>
-              </div>
-              <div class="rg-tools">
-                <label class="rg-filter">
-                  ${icon('filter', { size: 15 })}
-                  <input type="search" id="rg-filter" placeholder="Filter by name, tag or author" autocomplete="off" spellcheck="false" aria-label="Filter packages" value="${escapeHtml(params.q || '')}" />
-                </label>
-                <div class="rg-sort" role="tablist" aria-label="Sort packages" id="rg-sort">
-                  <button type="button" data-sort="downloads" class="is-active">Popular</button>
-                  <button type="button" data-sort="recent">Updated</button>
-                  <button type="button" data-sort="new">Newest</button>
-                  <button type="button" data-sort="name">A–Z</button>
+          <div class="rg-numbers-band">
+            <dl class="rg-numbers">
+              <div><dt><span>01</span>Packages</dt><dd id="rg-n-packages">—</dd></div>
+              <div><dt><span>02</span>Installs · last week</dt><dd id="rg-n-weekly">—</dd></div>
+              <div><dt><span>03</span>Installs · all time</dt><dd id="rg-n-total">—</dd></div>
+              <div><dt><span>04</span>Authors</dt><dd id="rg-n-authors">—</dd></div>
+            </dl>
+          </div>
+        </section>
+
+        <!-- CATEGORIES ================================================= -->
+        <section class="rg-kinds">
+          <div class="rg-kinds-top">
+            <div><span class="lr-section-index">01 / BROWSE BY KIND</span><h2>Start with what<br>you want to <em>make.</em></h2></div>
+            <p>Pick a shelf. Click it again to put it back. Every package is tagged, so you can mix a shelf with a search.</p>
+          </div>
+          <div class="rg-discover" id="rg-discover">
+            ${CATEGORIES.map((c, i) => `
+              <button type="button" class="rg-cat" data-cat="${c.id}">
+                <i class="rg-brk rg-brk-tl"></i><i class="rg-brk rg-brk-br"></i>
+                <span class="rg-cat-top"><span>${String(i + 1).padStart(2, '0')}</span><em data-cat-count="${c.id}">—</em></span>
+                <span class="rg-cat-mark">${icon(c.icon, { size: 20 })}</span>
+                <strong>${c.label}</strong>
+                <span class="rg-cat-tags">${c.tags.slice(0, 3).map((t) => `#${t}`).join(' ')}</span>
+              </button>`).join('')}
+          </div>
+        </section>
+
+        <!-- RESULTS ==================================================== -->
+        <section class="rg-results" id="rg-results-section" aria-labelledby="rg-results-h">
+          <div class="rg-results-grid">
+            <div class="rg-results-main">
+              <div class="rg-results-head">
+                <div>
+                  <span class="lr-section-index">02 / THE SHELF</span>
+                  <h2 id="rg-results-h">All packages</h2>
+                  <p class="rg-count" id="rg-count" aria-live="polite">Loading…</p>
+                </div>
+                <div class="rg-tools">
+                  <label class="rg-filter">
+                    ${icon('filter', { size: 15 })}
+                    <input type="search" id="rg-filter" placeholder="Filter by name, tag or author" autocomplete="off" spellcheck="false" aria-label="Filter packages" value="${escapeHtml(params.q || '')}" />
+                  </label>
+                  <div class="rg-sort" role="tablist" aria-label="Sort packages" id="rg-sort">
+                    <button type="button" data-sort="downloads" class="is-active">Popular</button>
+                    <button type="button" data-sort="recent">Updated</button>
+                    <button type="button" data-sort="new">Newest</button>
+                    <button type="button" data-sort="name">A–Z</button>
+                  </div>
                 </div>
               </div>
+              <div class="rg-active" id="rg-active" hidden></div>
+              <div class="rg-list" id="rg-list">
+                ${'<div class="rg-skel rg-skel-row"></div>'.repeat(4)}
+              </div>
+              <nav class="rg-pager" id="rg-pager" aria-label="Pagination" hidden></nav>
             </div>
-            <div class="rg-active" id="rg-active" hidden></div>
-            <div class="rg-list" id="rg-list">
-              ${'<div class="rg-skel rg-skel-row"></div>'.repeat(4)}
-            </div>
-            <nav class="rg-pager" id="rg-pager" aria-label="Pagination" hidden></nav>
-          </section>
 
-          <aside class="rg-cta">
-            <div>
-              <p class="rg-eyebrow">// made something useful?</p>
-              <h3>Publish it in three commands.</h3>
-              <p><code>luc login</code> → <code>cd my-package</code> → <code>luc publish -p</code></p>
+            <aside class="rg-aside">
+              <div class="rg-aside-card">
+                <i class="rg-brk rg-brk-tl"></i><i class="rg-brk rg-brk-br"></i>
+                <h3 class="rg-aside-head">${icon('zap', { size: 15 })} Popular this week</h3>
+                <ol class="rg-popular" id="rg-popular">
+                  ${'<li class="rg-skel"></li>'.repeat(5)}
+                </ol>
+              </div>
+              <div class="rg-aside-card rg-aside-dark">
+                <i class="rg-brk rg-brk-tl"></i><i class="rg-brk rg-brk-br"></i>
+                <h3 class="rg-aside-head">${icon('terminal', { size: 15 })} Install anything</h3>
+                <code class="rg-aside-cmd"><b>$</b> luc install -p @user/name</code>
+                <p>The CLI downloads the <code>.luic</code> file and records the install. Every package page has a copy button.</p>
+                <a href="#/guide#libraries">How packages work ${icon('arrow-right', { size: 14 })}</a>
+              </div>
+            </aside>
+          </div>
+        </section>
+
+        <!-- CTA ======================================================== -->
+        <section class="rg-cta">
+          <div class="rg-cta-inner">
+            <div class="rg-cta-copy">
+              <span class="lr-section-index">03 / YOUR TURN</span>
+              <h2>Made something useful?<br><em>Put it on the shelf.</em></h2>
+              <p>One <code>.luic</code> file and an optional README. Sign in once from the terminal and publish in three commands.</p>
+              <div class="rg-cta-actions">
+                <a class="lr-button lr-button-orange" href="#/publish">${icon('upload', { size: 16 })} Publish a package ${icon('arrow-right', { size: 15 })}</a>
+                <a class="lr-text-link" href="#/guide#libraries">${icon('book', { size: 15 })} Read the guide</a>
+              </div>
             </div>
-            <a class="st-btn st-btn-primary" href="#/publish">${icon('upload', { size: 15 })} Publish a package</a>
-          </aside>
-        </div>
-      </section>`,
+            <div class="rg-cta-art" aria-hidden="true">
+              <div class="rg-sq rg-sq-lime rg-cta-sq1">${icon('package', { size: 20 })}<b>YOUR</b><span>.luic</span></div>
+              <div class="rg-terminal">
+                <div class="rg-terminal-head"><span>${icon('terminal', { size: 14 })} PUBLISH</span><span>01—03</span></div>
+                <div class="rg-terminal-line"><i>01</i><b>$</b> luc login</div>
+                <div class="rg-terminal-line"><i>02</i><b>$</b> cd my-package</div>
+                <div class="rg-terminal-line"><i>03</i><b>$</b> luc publish -p</div>
+                <div class="rg-terminal-status"><span><i></i> PUBLISHED</span><span>@you/my-package</span></div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>`,
 
     async after() {
       const list = document.getElementById('rg-list');
@@ -180,6 +253,7 @@ export function renderPackages(params = {}) {
         set('rg-n-weekly', formatNumber(all.reduce((s, p) => s + p.weeklyDownloads, 0)));
         set('rg-n-total', formatNumber(all.reduce((s, p) => s + p.totalDownloads, 0)));
         set('rg-n-authors', formatNumber(stats.authors ?? new Set(all.map((p) => p.author.handle)).size));
+        set('rg-hero-count', `${formatNumber(stats.packages ?? all.length)} packages`);
       } catch {
         popular.innerHTML = '<li class="rg-empty-li">Registry unavailable.</li>';
         count.textContent = 'The registry could not be loaded.';
@@ -188,10 +262,14 @@ export function renderPackages(params = {}) {
       }
 
       // popular column
-      const top = all.slice().sort((a, b) => b.weeklyDownloads - a.weeklyDownloads).slice(0, 8);
+      const ranked = all.slice().sort((a, b) => b.weeklyDownloads - a.weeklyDownloads);
+      const top = ranked.slice(0, 6);
+      const peak = Math.max(1, ...top.map((p) => p.weeklyDownloads));
       popular.innerHTML = top.length
-        ? top.map((p) => `<li><a href="#/packages/${encodeURIComponent(p.slug)}"><span>${escapeHtml(p.name)}</span><em>${formatNumber(p.weeklyDownloads, true)}/wk</em></a></li>`).join('')
+        ? top.map((p) => `<li style="--accent:${escapeHtml(p.accent || '#ef6130')};--w:${Math.max(6, Math.round((p.weeklyDownloads / peak) * 100))}%"><a href="#/packages/${encodeURIComponent(p.slug)}"><span>${escapeHtml(p.name)}</span><em>${formatNumber(p.weeklyDownloads, true)}</em></a><i class="rg-pop-bar"></i></li>`).join('')
         : '<li class="rg-empty-li">No packages yet.</li>';
+      const stack = document.getElementById('rg-stack');
+      if (stack) stack.innerHTML = ranked.slice(0, 3).map(stackSquare).join('') || '<p class="rg-stack-empty">Nothing published yet.</p>';
 
       // category counts
       const inCat = (pkg, cat) => {
@@ -248,7 +326,7 @@ export function renderPackages(params = {}) {
         });
 
         list.innerHTML = slice.length
-          ? slice.map(registryRow).join('')
+          ? slice.map((pkg, i) => registryRow(pkg, i)).join('')
           : emptyState({ iconName: 'search', title: 'Nothing matched that', body: 'Try a shorter filter or another category — or publish the package that is missing.', action: '<button class="st-btn st-btn-ghost" type="button" data-clear="all">Clear filters</button>' });
 
         if (pages > 1) {
@@ -311,8 +389,27 @@ export function renderPackages(params = {}) {
       };
       page.addEventListener('click', onClick);
 
+      // hero search mirrors into the shelf filter and scrolls down to results
+      const heroForm = document.getElementById('rg-hero-search');
+      const heroInput = document.getElementById('rg-hero-input');
+      heroForm?.addEventListener('submit', (e) => {
+        e.preventDefault();
+        state.q = heroInput.value.trim();
+        filter.value = state.q;
+        state.page = 1;
+        render({ scroll: true });
+      });
+      const onKey = (e) => {
+        if (e.key === '/' && !/input|textarea/i.test(document.activeElement?.tagName || '')) {
+          e.preventDefault();
+          heroInput?.focus();
+        }
+      };
+      document.addEventListener('keydown', onKey);
+
       let timer = null;
       filter.addEventListener('input', () => {
+        if (heroInput) heroInput.value = filter.value;
         clearTimeout(timer);
         timer = setTimeout(() => {
           state.q = filter.value.trim();
@@ -325,7 +422,7 @@ export function renderPackages(params = {}) {
       });
 
       render();
-      return () => clearTimeout(timer);
+      return () => { clearTimeout(timer); document.removeEventListener('keydown', onKey); };
     }
   };
 }

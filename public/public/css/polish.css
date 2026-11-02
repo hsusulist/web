@@ -560,3 +560,10 @@ html body.site-refresh .lr-featured .lr-featured-grid .pkg-card .pkg-foot { bord
 html body.site-refresh.is-inner .registry-results-column .pkg-card .pkg-foot .pkg-stat:nth-child(2),
 html body.site-refresh .lr-featured .lr-featured-grid .pkg-card .pkg-foot .pkg-stat:nth-child(2) { display: inline-flex; }
 html body.site-refresh.is-inner .registry-results-column .pkg-card .pkg-version { display: inline-block; }
+
+/* Narrow phones: the header row (logo + theme + Get LUC + Get Started + menu)
+   was ~40px wider than a 390px screen. Drop "Get LUC" — Download is in the menu. */
+@media (max-width: 480px) {
+  html body.site-refresh .header-cta { display: none !important; }
+  html body.site-refresh .header-actions { gap: 6px; }
+}

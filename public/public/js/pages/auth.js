@@ -22,67 +22,59 @@ export function renderAuth(mode, params = {}) {
       ? 'Join the LUC community and start publishing packages.'
       : 'Sign in to publish and manage your packages.';
 
+  const kicker = cliCode ? 'TERMINAL LOGIN' : registering ? 'JOIN LUC' : 'WELCOME BACK';
+  const heading = cliCode
+    ? 'Connect your<br>terminal.'
+    : registering ? 'Make yourself<br>at home.' : 'Good to see<br>you again.';
+  const artLine = registering
+    ? { a: 'Everything you make', b: 'runs on' }
+    : { a: 'Pick up where', b: 'you left off on' };
+
   return {
     title: `${registering ? 'Register' : 'Login'} — LUC`,
     description: 'Sign in to LUC to publish and manage packages.',
     html: `
-      <section class="auth-page" id="auth-page">
-        <div class="auth-shell">
-          <aside class="auth-aside" aria-hidden="true">
-            <div class="auth-aside-body">
-              <p class="auth-aside-kicker">// ${registering ? 'new here' : 'good to see you'}</p>
-              <h2>${registering ? 'Write it. Publish it. Share it.' : 'Your packages are waiting.'}</h2>
-              <ul class="auth-perks">
-                <li>${icon('package', { size: 16 })} Publish packages to the LUC registry</li>
-                <li>${icon('terminal', { size: 16 })} Sign in once from the <code>luc</code> CLI</li>
-                <li>${icon('users', { size: 16 })} Join a growing community of builders</li>
-              </ul>
-            </div>
-            <pre class="auth-aside-code"><span class="c">-- hello.luc</span>
-<span class="k">local</span> name = <span class="s">"world"</span>
-print(<span class="s">"hello, "</span> .. name)</pre>
-          </aside>
+      <section class="auth-page au2" id="auth-page" data-mode="${registering ? 'register' : 'login'}">
+        <div class="au2-form-col">
+          <div class="au2-form-top">
+            <span class="au2-index">${registering ? '01 / NEW ACCOUNT' : '01 / SIGN IN'}</span>
+            <span class="au2-index au2-index-right">LUC ACCOUNT</span>
+          </div>
 
-          <div class="auth-card">
+          <div class="auth-card au2-card">
             <header class="auth-head">
-              <p class="auth-eyebrow">${cliCode ? 'TERMINAL LOGIN' : 'LUC ACCOUNT'}</p>
-              <h1>${title}</h1>
+              <p class="auth-eyebrow"><span class="au2-kline"></span>${kicker}</p>
+              <h1>${heading}</h1>
               <p class="auth-lede">${lede}</p>
             </header>
 
-            <div class="auth-tabs" role="tablist">
+            <div class="auth-tabs au2-tabs" role="tablist">
               <a role="tab" class="auth-tab ${registering ? '' : 'is-active'}" aria-selected="${!registering}" href="#/login${switchQuery}">Log in</a>
-              <a role="tab" class="auth-tab ${registering ? 'is-active' : ''}" aria-selected="${registering}" href="#/register${switchQuery}">Register</a>
+              <a role="tab" class="auth-tab ${registering ? 'is-active' : ''}" aria-selected="${registering}" href="#/register${switchQuery}">Create account</a>
             </div>
 
             <div class="auth-current" id="auth-current" hidden></div>
-            <button class="auth-btn auth-btn-primary" id="auth-approve" type="button" hidden>Authorize this terminal ${icon('arrow-right', { size: 16 })}</button>
+            <button class="auth-btn auth-btn-primary" id="auth-approve" type="button" hidden><span class="auth-btn-label">Authorize this terminal</span> ${icon('arrow-right', { size: 16 })}</button>
             <button class="auth-different" id="auth-different" type="button" hidden>Use a different account</button>
 
             <div id="auth-body">
-              <button class="auth-btn auth-btn-google" id="auth-google" type="button" hidden>
-                <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3a12 12 0 0 1-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>
-                Continue with Google
-              </button>
-              <div class="auth-divider" id="auth-divider" hidden><span>or with username</span></div>
-
               <form id="auth-form" novalidate>
                 <div class="auth-field">
-                  <label for="auth-username">Username</label>
+                  <div class="au2-label-row"><label for="auth-username">Username</label>${registering ? '<span>3–32 characters</span>' : ''}</div>
                   <div class="auth-input">
                     ${icon('user', { size: 17 })}
-                    <input id="auth-username" name="username" required minlength="3" maxlength="32" autocomplete="username" placeholder="yourname" spellcheck="false" autocapitalize="off" />
+                    <input id="auth-username" name="username" required minlength="3" maxlength="32" autocomplete="username" placeholder="${registering ? 'Choose a username' : 'yourname'}" spellcheck="false" autocapitalize="off" />
                   </div>
-                  ${registering ? '<p class="auth-hint">3–32 characters.</p>' : ''}
+                  ${registering ? '<p class="auth-hint">This is how people will find you in the registry.</p>' : ''}
                 </div>
                 <div class="auth-field">
-                  <label for="auth-password">Password</label>
+                  <div class="au2-label-row"><label for="auth-password">Password</label>${registering ? '<span>8–128 characters</span>' : ''}</div>
                   <div class="auth-input">
                     ${svg(LOCK)}
                     <input id="auth-password" name="password" type="password" required minlength="8" maxlength="128" autocomplete="${registering ? 'new-password' : 'current-password'}" placeholder="${registering ? 'At least 8 characters' : 'Your password'}" />
                     <button class="auth-eye" id="auth-eye" type="button" aria-label="Show password">${svg(EYE)}</button>
                   </div>
-                  ${registering ? '<div class="auth-strength" id="auth-strength"><i></i><i></i><i></i><i></i></div>' : ''}
+                  ${registering ? '<div class="auth-strength" id="auth-strength"><i></i><i></i><i></i><i></i></div><p class="auth-hint au2-strength-label" id="auth-strength-label">Add a password to check its strength.</p>' : ''}
                 </div>
                 <p class="auth-error" id="auth-error" role="alert" hidden></p>
                 <button class="auth-btn auth-btn-primary" id="auth-submit" type="submit">
@@ -90,12 +82,50 @@ print(<span class="s">"hello, "</span> .. name)</pre>
                   ${icon('arrow-right', { size: 16 })}
                 </button>
               </form>
+
+              <div class="auth-divider" id="auth-divider"><span>or</span></div>
+
+              <button class="auth-btn auth-btn-google" id="auth-google" type="button">
+                <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3a12 12 0 0 1-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>
+                <span>${registering ? 'Sign up with Google' : 'Continue with Google'}</span>
+              </button>
+              <p class="au2-google-note" id="auth-google-note" hidden>Google sign-in isn't switched on for this server yet. Use a username and password for now.</p>
             </div>
 
             <p class="auth-switch">${registering ? 'Already have an account?' : 'New to LUC?'} <a href="#/${registering ? 'login' : 'register'}${switchQuery}">${registering ? 'Log in' : 'Create an account'}</a></p>
             ${cliCode ? '<p class="auth-foot">This login is scoped to the terminal session that opened this page.</p>' : ''}
           </div>
+
+          <div class="au2-form-foot">
+            <span>Apache 2.0 · open source</span>
+            <a href="https://github.com/hsusulist/luc/issues" target="_blank" rel="noopener noreferrer">Get help ${icon('arrow-up-right', { size: 12 })}</a>
+          </div>
         </div>
+
+        <aside class="au2-art" aria-hidden="true">
+          <i class="au2-corner au2-corner-tl"></i><i class="au2-corner au2-corner-tr"></i>
+          <i class="au2-corner au2-corner-bl"></i><i class="au2-corner au2-corner-br"></i>
+          <div class="au2-art-top">
+            <span>LUC / ${registering ? 'JOIN' : 'LOGIN'}</span>
+            <span class="au2-signal"><i></i><i></i><i></i><i></i><i></i><b>REGISTRY ONLINE</b></span>
+          </div>
+          <div class="au2-art-code"><span>import</span> libraries<br><span>get</span> what you need<br><span>make</span> something yours</div>
+
+          <div class="au2-sq au2-sq-lime">${icon('package', { size: 24 })}<b>PACKAGE</b><span>.luic</span></div>
+          <div class="au2-sq au2-sq-orange">${icon('command', { size: 23 })}<b>MODULE</b><span>luc</span></div>
+          <div class="au2-sq au2-sq-cream">${icon('terminal', { size: 20 })}<b>SCRIPT</b><span>hello.luc</span></div>
+          <div class="au2-sq au2-sq-dot"></div>
+
+          <div class="au2-tagline">
+            <span>${artLine.a}</span>
+            <span class="au2-tag-row">${artLine.b} <em class="au2-pill"><img src="/assets/logo.svg" width="30" height="30" alt="" />luc<b>.</b></em></span>
+          </div>
+
+          <div class="au2-art-bottom">
+            <span>LUC REGISTRY ${icon('arrow-right', { size: 14 })} YOUR PROJECT</span>
+            <span>${registering ? '02 — PUBLISH' : '02 — CONTINUE'}</span>
+          </div>
+        </aside>
       </section>`,
     async after() {
       const form = document.getElementById('auth-form');
@@ -120,12 +150,13 @@ print(<span class="s">"hello, "</span> .. name)</pre>
         submit.classList.toggle('is-loading', on);
       };
 
-      // Google sign-in: only show the button when the server has it configured.
+      // Google sign-in is always offered; if the server has no OAuth keys we say so on click.
+      let googleEnabled = true;
       try {
         const config = await (await fetch('/api/auth/config')).json();
-        google.hidden = !config.googleEnabled;
-        divider.hidden = !config.googleEnabled;
-      } catch { /* keep hidden */ }
+        googleEnabled = Boolean(config.googleEnabled);
+      } catch { /* assume enabled; the server will answer */ }
+      const googleNote = document.getElementById('auth-google-note');
 
       eye?.addEventListener('click', () => {
         const show = password.type === 'password';
@@ -144,6 +175,8 @@ print(<span class="s">"hello, "</span> .. name)</pre>
           if (/[A-Z]/.test(v) && /[a-z]/.test(v)) score++;
           if (/\d/.test(v) && /[^A-Za-z0-9]/.test(v)) score++;
           strength.dataset.score = v ? String(Math.max(1, score)) : '0';
+          const label = document.getElementById('auth-strength-label');
+          if (label) label.textContent = v ? ['Too weak', 'Weak — add more characters', 'Okay — mix in upper & lower case', 'Good — add a symbol and a number', 'Strong password'][Math.max(1, score)] : 'Add a password to check its strength.';
         });
       }
 
@@ -204,6 +237,12 @@ print(<span class="s">"hello, "</span> .. name)</pre>
       });
 
       google?.addEventListener('click', () => {
+        if (!googleEnabled) {
+          googleNote.hidden = false;
+          google.classList.add('is-shake');
+          setTimeout(() => google.classList.remove('is-shake'), 450);
+          return;
+        }
         const query = cliCode ? `?cli=${encodeURIComponent(cliCode)}` : '';
         window.location.href = `/api/auth/google/start${query}`;
       });
