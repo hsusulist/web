@@ -15,6 +15,7 @@ import {
   toast,
   emptyState,
   commandBox,
+  sparkline,
   icon as uiIcon
 } from '../lib/ui.js';
 
@@ -24,88 +25,149 @@ const LICENSES = ['Apache-2.0', 'MIT', 'BSD-2-Clause', 'BSD-3-Clause', 'GPL-3.0'
 /* registry list                                                          */
 /* ====================================================================== */
 
-export function renderPackages(params = {}) {
-  const initialTag = params.tag || '';
+const CATEGORIES = [
+  { id: 'graphics', label: 'Graphics & games', icon: 'monitor', tags: ['graphics', 'gamedev', 'sound', 'sdl2', 'ui', 'gui'] },
+  { id: 'ai', label: 'AI & ML', icon: 'sparkles', tags: ['ai', 'machine-learning', 'tensor', 'neural-network', 'llm'] },
+  { id: 'network', label: 'Networking', icon: 'globe', tags: ['http', 'networking', 'websocket', 'server', 'web', 'api'] },
+  { id: 'bots', label: 'Bots & chat', icon: 'message', tags: ['bots', 'discord', 'chat', 'telegram'] },
+  { id: 'data', label: 'Data & parsing', icon: 'file-text', tags: ['json', 'parsing', 'data', 'csv', 'yaml'] },
+  { id: 'tooling', label: 'CLI & tooling', icon: 'terminal', tags: ['libraries', 'tooling', 'packaging', 'cli', 'testing'] }
+];
+const PAGE_SIZE = 10;
 
+function registryRow(pkg) {
+  const href = `#/packages/${encodeURIComponent(pkg.slug)}`;
+  const handle = pkg.author.handle || pkg.author.name;
+  return `
+    <article class="rg-row" style="--accent:${escapeHtml(pkg.accent || '#ef6130')}">
+      <div class="rg-row-main">
+        <h3 class="rg-row-title">
+          <a href="${href}">${escapeHtml(pkg.name)}</a>
+          ${pkg.official ? `<span class="rg-badge rg-badge-official">${icon('check', { size: 10 })} official</span>` : ''}
+        </h3>
+        <p class="rg-row-summary">${escapeHtml(pkg.summary)}</p>
+        ${pkg.tags.length ? `<div class="rg-row-tags">${pkg.tags.slice(0, 5).map((t) => `<button type="button" class="rg-tag" data-tag="${escapeHtml(t)}">${escapeHtml(t)}</button>`).join('')}</div>` : ''}
+        <p class="rg-row-meta">
+          <span class="rg-row-author"><span class="rg-mini-avatar">${escapeHtml(handle.slice(0, 1).toUpperCase())}</span>${escapeHtml(handle)}</span>
+          <span>published <strong>${escapeHtml(pkg.version)}</strong></span>
+          <span>${escapeHtml(timeAgo(pkg.updatedAt) || formatDate(pkg.updatedAt))}</span>
+          <span>${escapeHtml(pkg.license)}</span>
+        </p>
+      </div>
+      <div class="rg-row-side">
+        <span class="rg-row-dl"><strong>${formatNumber(pkg.weeklyDownloads, true)}</strong> weekly</span>
+        ${sparkline(pkg.downloadsHistory, pkg.accent)}
+        <button class="rg-row-copy" type="button" data-copy data-copy-text="${escapeHtml(installCommand(pkg))}" data-install="${escapeHtml(pkg.slug)}" title="Copy install command">${icon('copy', { size: 13 })}<span>install</span></button>
+      </div>
+    </article>`;
+}
+
+export function renderPackages(params = {}) {
   return {
     title: 'Packages — the LUC registry',
     description: 'Browse community and official LUC libraries. Search by name, tag or author, then copy a one-line install command.',
     html: `
-      ${pageHero({
-        eyebrow: 'Package registry',
-        title: 'Packages for<br /><span class="grad">anything you make.</span>',
-        lede: 'Real LUC libraries, ranked by downloads. Search for what you need or explore popular tags.',
-        actions: `
-          <a class="btn btn-primary" href="#/publish">${icon('upload', { size: 16 })} Publish your package</a>
-          <a class="btn btn-ghost" href="#/guide#libraries">${icon('book', { size: 16 })} How libraries work</a>`,
-        meta: `
-          <span>${icon('package', { size: 14 })} <span id="stat-packages">—</span> packages</span>
-          <span>${icon('download', { size: 14 })} <span id="stat-weekly">—</span> installs / week</span>
-          <span>${icon('users', { size: 14 })} <span id="stat-authors">—</span> authors</span>`
-      })}
-
-      <section class="section-tight">
-        <div class="container">
-          <div class="registry-toolbar">
-            <div class="search-field">
-              ${icon('search', { size: 17 })}
-              <input type="search" id="pkg-search" placeholder="Search packages, tags or authors…" autocomplete="off" spellcheck="false" aria-label="Search packages" value="${escapeHtml(params.q || '')}" />
-              <span class="search-kbd">/</span>
-            </div>
-            <div class="select-wrap">
-              <select id="pkg-sort" aria-label="Sort packages">
-                <option value="downloads">Most downloads</option>
-                <option value="recent">Recently updated</option>
-                <option value="new">Newest</option>
-                <option value="name">Name A–Z</option>
-              </select>
-              ${icon('chevron-down', { size: 15 })}
-            </div>
-          </div>
-
-          <div class="registry-explore">
-            <div class="registry-results-column">
-              <div class="registry-meta">
-                <span id="pkg-count">Loading packages…</span>
-                <span class="registry-live"><span class="status-dot"></span> live registry</span>
-              </div>
-              <div class="pkg-grid" id="pkg-results" aria-live="polite">
-                <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>
-              </div>
-            </div>
-            <aside class="registry-discover">
-              <p class="registry-discover-kicker">DISCOVER</p>
-              <h2>Popular tags</h2>
-              <p>Pick a topic to find packages people are using.</p>
-              <div class="filter-row" id="pkg-tags" aria-label="Filter by popular tag">
-                <button class="filter-chip is-active" data-tag="" type="button">all packages</button>
-              </div>
-            </aside>
-          </div>
-
-          <div class="registry-cta reveal">
+      <section class="rg-page" id="registry-page">
+        <div class="rg-wrap">
+          <header class="rg-intro">
             <div>
-              <h3>Made something useful?</h3>
-              <p>Publishing takes a name, a sentence and a version. A README is optional. The install command is generated for you.</p>
+              <p class="rg-eyebrow">05 / REGISTRY</p>
+              <h1>Packages</h1>
+              <p class="rg-lede">Libraries for LUC, published by the community and the core team. Install any of them with one line.</p>
             </div>
-            <a class="btn btn-primary" href="#/publish">${icon('upload', { size: 16 })} Publish a package</a>
+            <div class="rg-intro-actions">
+              <a class="st-btn st-btn-dark" href="#/publish">${icon('upload', { size: 15 })} Publish a package</a>
+              <a class="st-btn st-btn-ghost" href="#/guide#libraries">${icon('book', { size: 15 })} How it works</a>
+            </div>
+          </header>
+
+          <div class="rg-columns">
+            <section class="rg-col rg-col-popular" aria-labelledby="rg-popular-h">
+              <h2 id="rg-popular-h" class="rg-col-head rg-line-orange">${icon('zap', { size: 16 })} Popular libraries</h2>
+              <ol class="rg-popular" id="rg-popular">
+                ${'<li class="rg-skel"></li>'.repeat(6)}
+              </ol>
+            </section>
+
+            <section class="rg-col rg-col-discover" aria-labelledby="rg-discover-h">
+              <h2 id="rg-discover-h" class="rg-col-head rg-line-amber">${icon('search', { size: 16 })} Discover packages</h2>
+              <div class="rg-discover" id="rg-discover">
+                ${CATEGORIES.map((c) => `
+                  <button type="button" class="rg-cat" data-cat="${c.id}">
+                    ${icon(c.icon, { size: 18 })}
+                    <span>${c.label}</span>
+                    <em data-cat-count="${c.id}">—</em>
+                  </button>`).join('')}
+              </div>
+            </section>
+
+            <section class="rg-col rg-col-numbers" aria-labelledby="rg-numbers-h">
+              <h2 id="rg-numbers-h" class="rg-col-head rg-line-lime">${icon('layers', { size: 16 })} By the numbers</h2>
+              <dl class="rg-numbers">
+                <div><dt>Packages</dt><dd id="rg-n-packages">—</dd></div>
+                <div><dt>Downloads · Last week</dt><dd id="rg-n-weekly">—</dd></div>
+                <div><dt>Downloads · All time</dt><dd id="rg-n-total">—</dd></div>
+                <div><dt>Authors</dt><dd id="rg-n-authors">—</dd></div>
+              </dl>
+            </section>
           </div>
+
+          <section class="rg-results" id="rg-results-section" aria-labelledby="rg-results-h">
+            <div class="rg-results-head">
+              <div>
+                <h2 id="rg-results-h">All packages</h2>
+                <p class="rg-count" id="rg-count" aria-live="polite">Loading…</p>
+              </div>
+              <div class="rg-tools">
+                <label class="rg-filter">
+                  ${icon('filter', { size: 15 })}
+                  <input type="search" id="rg-filter" placeholder="Filter by name, tag or author" autocomplete="off" spellcheck="false" aria-label="Filter packages" value="${escapeHtml(params.q || '')}" />
+                </label>
+                <div class="rg-sort" role="tablist" aria-label="Sort packages" id="rg-sort">
+                  <button type="button" data-sort="downloads" class="is-active">Popular</button>
+                  <button type="button" data-sort="recent">Updated</button>
+                  <button type="button" data-sort="new">Newest</button>
+                  <button type="button" data-sort="name">A–Z</button>
+                </div>
+              </div>
+            </div>
+            <div class="rg-active" id="rg-active" hidden></div>
+            <div class="rg-list" id="rg-list">
+              ${'<div class="rg-skel rg-skel-row"></div>'.repeat(4)}
+            </div>
+            <nav class="rg-pager" id="rg-pager" aria-label="Pagination" hidden></nav>
+          </section>
+
+          <aside class="rg-cta">
+            <div>
+              <p class="rg-eyebrow">// made something useful?</p>
+              <h3>Publish it in three commands.</h3>
+              <p><code>luc login</code> → <code>cd my-package</code> → <code>luc publish -p</code></p>
+            </div>
+            <a class="st-btn st-btn-primary" href="#/publish">${icon('upload', { size: 15 })} Publish a package</a>
+          </aside>
         </div>
-      </section>
-    `,
+      </section>`,
+
     async after() {
-      observeReveal();
+      const list = document.getElementById('rg-list');
+      const count = document.getElementById('rg-count');
+      const filter = document.getElementById('rg-filter');
+      const sortWrap = document.getElementById('rg-sort');
+      const active = document.getElementById('rg-active');
+      const pager = document.getElementById('rg-pager');
+      const discover = document.getElementById('rg-discover');
+      const popular = document.getElementById('rg-popular');
+      if (!list) return;
 
-      const results = document.getElementById('pkg-results');
-      const count = document.getElementById('pkg-count');
-      const tagsWrap = document.getElementById('pkg-tags');
-      const search = document.getElementById('pkg-search');
-      const sort = document.getElementById('pkg-sort');
-      if (!results || !count || !search || !sort) return;
-
+      const state = {
+        q: params.q || '',
+        tag: params.tag || '',
+        cat: CATEGORIES.some((c) => c.id === params.cat) ? params.cat : '',
+        sort: ['downloads', 'recent', 'new', 'name'].includes(params.sort) ? params.sort : 'downloads',
+        page: Math.max(1, Number(params.page) || 1)
+      };
       let all = [];
-      let state = { q: params.q || '', tag: initialTag, sort: params.sort || 'downloads' };
-      sort.value = state.sort;
 
       try {
         const res = await fetch('/api/packages');
@@ -113,138 +175,157 @@ export function renderPackages(params = {}) {
         const data = await res.json();
         all = data.packages || [];
         const stats = data.stats || {};
-        const set = (id, value) => {
-          const el = document.getElementById(id);
-          if (el) el.textContent = value;
-        };
-        set('stat-packages', formatNumber(stats.packages || all.length));
-        set('stat-weekly', formatNumber(stats.weeklyDownloads || 0, true));
-        set('stat-authors', formatNumber(stats.authors || 0));
-        buildTags();
+        const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+        set('rg-n-packages', formatNumber(stats.packages ?? all.length));
+        set('rg-n-weekly', formatNumber(all.reduce((s, p) => s + p.weeklyDownloads, 0)));
+        set('rg-n-total', formatNumber(all.reduce((s, p) => s + p.totalDownloads, 0)));
+        set('rg-n-authors', formatNumber(stats.authors ?? new Set(all.map((p) => p.author.handle)).size));
       } catch {
+        popular.innerHTML = '<li class="rg-empty-li">Registry unavailable.</li>';
         count.textContent = 'The registry could not be loaded.';
-        results.innerHTML = emptyState({
-          iconName: 'alert',
-          title: 'Registry unavailable',
-          body: 'The package API did not answer. Refresh the page, or check the repository while we catch up.',
-          action: '<a class="btn btn-ghost btn-sm" href="https://github.com/hsusulist/luc" target="_blank" rel="noopener noreferrer">Open GitHub</a>'
-        });
+        list.innerHTML = emptyState({ iconName: 'alert', title: 'Registry unavailable', body: 'The package API did not answer. Refresh the page in a moment.' });
         return;
       }
 
-      function buildTags() {
-        if (!tagsWrap) return;
-        const counts = new Map();
-        all.forEach((pkg) => pkg.tags.forEach((tag) => counts.set(tag, (counts.get(tag) || 0) + 1)));
-        const top = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 12);
-        tagsWrap.innerHTML = `
-          <button class="filter-chip ${state.tag ? '' : 'is-active'}" data-tag="" type="button">all packages</button>
-          ${top.map(([tag, n]) => `<button class="filter-chip ${state.tag === tag ? 'is-active' : ''}" data-tag="${escapeHtml(tag)}" type="button">${escapeHtml(tag)} <span style="opacity:.55">${n}</span></button>`).join('')}`;
-        if (state.tag && !top.some(([tag]) => tag === state.tag)) {
-          tagsWrap.insertAdjacentHTML('beforeend', `<button class="filter-chip is-active" data-tag="${escapeHtml(state.tag)}" type="button">${escapeHtml(state.tag)}</button>`);
+      // popular column
+      const top = all.slice().sort((a, b) => b.weeklyDownloads - a.weeklyDownloads).slice(0, 8);
+      popular.innerHTML = top.length
+        ? top.map((p) => `<li><a href="#/packages/${encodeURIComponent(p.slug)}"><span>${escapeHtml(p.name)}</span><em>${formatNumber(p.weeklyDownloads, true)}/wk</em></a></li>`).join('')
+        : '<li class="rg-empty-li">No packages yet.</li>';
+
+      // category counts
+      const inCat = (pkg, cat) => {
+        const c = CATEGORIES.find((x) => x.id === cat);
+        return c ? pkg.tags.some((t) => c.tags.includes(t.toLowerCase())) : true;
+      };
+      CATEGORIES.forEach((c) => {
+        const el = discover.querySelector(`[data-cat-count="${c.id}"]`);
+        if (el) el.textContent = String(all.filter((p) => inCat(p, c.id)).length);
+      });
+
+      function updateUrl() {
+        const q = new URLSearchParams();
+        if (state.q) q.set('q', state.q);
+        if (state.tag) q.set('tag', state.tag);
+        if (state.cat) q.set('cat', state.cat);
+        if (state.sort !== 'downloads') q.set('sort', state.sort);
+        if (state.page > 1) q.set('page', String(state.page));
+        const s = q.toString();
+        history.replaceState(null, '', `#/packages${s ? `?${s}` : ''}`);
+      }
+
+      function render({ scroll = false } = {}) {
+        const q = state.q.trim().toLowerCase();
+        let rows = all.filter((pkg) => {
+          if (state.cat && !inCat(pkg, state.cat)) return false;
+          if (state.tag && !pkg.tags.some((t) => t.toLowerCase() === state.tag.toLowerCase())) return false;
+          if (!q) return true;
+          return [pkg.name, pkg.summary, pkg.author.name, pkg.author.handle, ...pkg.tags].join(' ').toLowerCase().includes(q);
+        });
+        if (state.sort === 'downloads') rows.sort((a, b) => b.weeklyDownloads - a.weeklyDownloads);
+        else if (state.sort === 'recent') rows.sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
+        else if (state.sort === 'new') rows.sort((a, b) => String(b.publishedAt).localeCompare(String(a.publishedAt)));
+        else rows.sort((a, b) => a.name.localeCompare(b.name));
+
+        const pages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+        state.page = Math.min(state.page, pages);
+        const slice = rows.slice((state.page - 1) * PAGE_SIZE, state.page * PAGE_SIZE);
+
+        count.innerHTML = `<strong>${formatNumber(rows.length)}</strong> ${rows.length === 1 ? 'package' : 'packages'} found`;
+
+        // active filter chips
+        const chips = [];
+        if (state.cat) chips.push(`<button type="button" class="rg-chip" data-clear="cat">${escapeHtml(CATEGORIES.find((c) => c.id === state.cat).label)} ${icon('x', { size: 12 })}</button>`);
+        if (state.tag) chips.push(`<button type="button" class="rg-chip" data-clear="tag">#${escapeHtml(state.tag)} ${icon('x', { size: 12 })}</button>`);
+        if (state.q) chips.push(`<button type="button" class="rg-chip" data-clear="q">“${escapeHtml(state.q)}” ${icon('x', { size: 12 })}</button>`);
+        active.hidden = !chips.length;
+        active.innerHTML = chips.length ? `${chips.join('')}<button type="button" class="rg-chip-clear" data-clear="all">Clear all</button>` : '';
+
+        discover.querySelectorAll('.rg-cat').forEach((b) => b.classList.toggle('is-active', b.dataset.cat === state.cat));
+        sortWrap.querySelectorAll('button').forEach((b) => {
+          b.classList.toggle('is-active', b.dataset.sort === state.sort);
+          b.setAttribute('aria-selected', String(b.dataset.sort === state.sort));
+        });
+
+        list.innerHTML = slice.length
+          ? slice.map(registryRow).join('')
+          : emptyState({ iconName: 'search', title: 'Nothing matched that', body: 'Try a shorter filter or another category — or publish the package that is missing.', action: '<button class="st-btn st-btn-ghost" type="button" data-clear="all">Clear filters</button>' });
+
+        if (pages > 1) {
+          const btn = (p, label = p, extra = '') => `<button type="button" data-page="${p}" class="${p === state.page ? 'is-active' : ''}" ${extra}>${label}</button>`;
+          let html = btn(Math.max(1, state.page - 1), icon('chevron-left', { size: 14 }), `aria-label="Previous page" ${state.page === 1 ? 'disabled' : ''}`);
+          for (let p = 1; p <= pages; p++) html += btn(p);
+          html += btn(Math.min(pages, state.page + 1), icon('chevron-right', { size: 14 }), `aria-label="Next page" ${state.page === pages ? 'disabled' : ''}`);
+          pager.innerHTML = html;
+          pager.hidden = false;
+        } else {
+          pager.hidden = true;
+          pager.innerHTML = '';
+        }
+
+        updateUrl();
+        if (scroll) {
+          const head = document.getElementById('rg-results-section');
+          window.scrollTo({ top: head.getBoundingClientRect().top + window.scrollY - 90, behavior: 'smooth' });
         }
       }
 
-      function render() {
-        const q = state.q.trim().toLowerCase();
-        let list = all.filter((pkg) => {
-          const tagOk = !state.tag || pkg.tags.some((tag) => tag.toLowerCase() === state.tag.toLowerCase());
-          if (!tagOk) return false;
-          if (!q) return true;
-          return [pkg.name, pkg.summary, pkg.author.name, pkg.author.handle, ...pkg.tags]
-            .join(' ')
-            .toLowerCase()
-            .includes(q);
-        });
-
-        if (state.sort === 'downloads') list.sort((a, b) => b.weeklyDownloads - a.weeklyDownloads);
-        else if (state.sort === 'recent') list.sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
-        else if (state.sort === 'new') list.sort((a, b) => String(b.publishedAt).localeCompare(String(a.publishedAt)));
-        else if (state.sort === 'name') list.sort((a, b) => a.name.localeCompare(b.name));
-
-        const defaultView = !q && !state.tag && state.sort === 'downloads';
-        const totalMatches = list.length;
-        if (defaultView) list = list.slice(0, 4);
-        count.innerHTML = defaultView
-          ? `<strong>Top ${list.length}</strong> most downloaded packages`
-          : `<strong>${totalMatches}</strong> ${totalMatches === 1 ? 'package' : 'packages'}${state.tag ? ` tagged <strong>${escapeHtml(state.tag)}</strong>` : ''}${q ? ` matching <strong>“${escapeHtml(state.q)}”</strong>` : ''}`;
-
-        results.innerHTML = list.length
-          ? list.map(packageCard).join('')
-          : emptyState({
-            iconName: 'search',
-            title: 'Nothing matched that',
-            body: 'Try a shorter search, a different tag, or publish the package that is missing.',
-            action: '<button class="btn btn-ghost btn-sm" type="button" id="pkg-clear">Clear filters</button>'
-          });
-
-        document.getElementById('pkg-clear')?.addEventListener('click', () => {
-          state = { q: '', tag: '', sort: state.sort };
-          search.value = '';
-          buildTags();
-          syncUrl();
+      const page = document.getElementById('registry-page');
+      const onClick = (event) => {
+        const cat = event.target.closest('.rg-cat');
+        if (cat) {
+          state.cat = state.cat === cat.dataset.cat ? '' : cat.dataset.cat;
+          state.page = 1;
+          return render({ scroll: true });
+        }
+        const tag = event.target.closest('.rg-tag');
+        if (tag) {
+          state.tag = tag.dataset.tag;
+          state.page = 1;
+          return render({ scroll: true });
+        }
+        // Scope lookups to this page: <body> carries data-page="packages" from the router.
+        const sort = event.target.closest('#rg-sort [data-sort]');
+        if (sort) {
+          state.sort = sort.dataset.sort;
+          state.page = 1;
+          return render();
+        }
+        const pg = event.target.closest('#rg-pager [data-page]');
+        if (pg) {
+          if (!pg.disabled) {
+            state.page = Number(pg.dataset.page) || 1;
+            render({ scroll: true });
+          }
+          return;
+        }
+        const clear = event.target.closest('#registry-page [data-clear]');
+        if (clear) {
+          const what = clear.dataset.clear;
+          if (what === 'all' || what === 'q') { state.q = ''; filter.value = ''; }
+          if (what === 'all' || what === 'tag') state.tag = '';
+          if (what === 'all' || what === 'cat') state.cat = '';
+          state.page = 1;
           render();
-        });
-
-        updateUrl();
-      }
-
-      function updateUrl() {
-        const query = new URLSearchParams();
-        if (state.q) query.set('q', state.q);
-        if (state.tag) query.set('tag', state.tag);
-        if (state.sort !== 'downloads') query.set('sort', state.sort);
-        const suffix = query.toString();
-        history.replaceState(null, '', `#/packages${suffix ? `?${suffix}` : ''}`);
-      }
-
-      function syncUrl() {
-        updateUrl();
-      }
+        }
+      };
+      page.addEventListener('click', onClick);
 
       let timer = null;
-      search.addEventListener('input', () => {
+      filter.addEventListener('input', () => {
         clearTimeout(timer);
         timer = setTimeout(() => {
-          state.q = search.value;
+          state.q = filter.value.trim();
+          state.page = 1;
           render();
         }, 140);
       });
-
-      sort.addEventListener('change', () => {
-        state.sort = sort.value;
-        render();
+      filter.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') { filter.value = ''; state.q = ''; render(); }
       });
 
-      tagsWrap?.addEventListener('click', (event) => {
-        const chip = event.target.closest('[data-tag]');
-        if (!chip) return;
-        state.tag = chip.dataset.tag;
-        [...tagsWrap.querySelectorAll('.filter-chip')].forEach((el) => el.classList.toggle('is-active', el === chip));
-        render();
-      });
-
-      const onKey = (event) => {
-        if (event.key === '/' && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
-          event.preventDefault();
-          search.focus();
-        }
-        if (event.key === 'Escape' && document.activeElement === search) {
-          search.value = '';
-          state.q = '';
-          render();
-        }
-      };
-      document.addEventListener('keydown', onKey);
-
-      state.q = search.value;
-      if (params.tag) state.tag = params.tag;
       render();
-
-      return () => {
-        document.removeEventListener('keydown', onKey);
-        clearTimeout(timer);
-      };
+      return () => clearTimeout(timer);
     }
   };
 }

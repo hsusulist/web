@@ -1,1 +1,13 @@
-[]
+[
+  {
+    "id": "30bc59bc-57ba-472d-bfed-915ccbcc04f9",
+    "username": "hsusulist",
+    "email": "",
+    "salt": "92424b99c2df89fe782754d113f9bda3",
+    "passwordHash": "7db7ab4bfa37aae04f976c809563378a99cae84b4c4f79e65be9dc012ed046cd2de80cc862df9154e796193de862ce6c686746bd67e21a68aed49d4467b00e11",
+    "googleId": "",
+    "createdAt": "2026-11-01T15:31:19.977Z",
+    "avatar": "30bc59bc-57ba-472d-bfed-915ccbcc04f9.png",
+    "avatarVersion": 1
+  }
+]

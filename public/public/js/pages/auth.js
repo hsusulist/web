@@ -1,13 +1,8 @@
 import { icon } from '../lib/icons.js';
 import { escapeHtml } from '../lib/highlight.js';
+import { getAuth, setAuth, clearAuth } from '../lib/session.js';
 
-function storedAuth() {
-  try {
-    return JSON.parse(localStorage.getItem('luc.auth') || 'null');
-  } catch {
-    return null;
-  }
-}
+const storedAuth = getAuth;
 
 const EYE = '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>';
 const EYE_OFF = '<path d="M9.9 4.2A10.6 10.6 0 0 1 12 4c6.5 0 10 8 10 8a17.6 17.6 0 0 1-2.2 3.2"/><path d="M6.6 6.6C3.7 8.5 2 12 2 12s3.5 7 10 7a9.8 9.8 0 0 0 5.4-1.6"/><path d="M14.1 14.1a3 3 0 0 1-4.2-4.2"/><path d="m2 2 20 20"/>';
@@ -34,7 +29,6 @@ export function renderAuth(mode, params = {}) {
       <section class="auth-page" id="auth-page">
         <div class="auth-shell">
           <aside class="auth-aside" aria-hidden="true">
-            <a class="auth-aside-brand" href="#/" tabindex="-1"><span>L</span>luc.</a>
             <div class="auth-aside-body">
               <p class="auth-aside-kicker">// ${registering ? 'new here' : 'good to see you'}</p>
               <h2>${registering ? 'Write it. Publish it. Share it.' : 'Your packages are waiting.'}</h2>
@@ -153,8 +147,14 @@ print(<span class="s">"hello, "</span> .. name)</pre>
         });
       }
 
+      // Already signed in and not authorizing a terminal: go straight to settings.
+      if (!cliCode && storedAuth()?.user) {
+        window.location.hash = next.startsWith('/') ? `#${next}` : '#/settings';
+        return;
+      }
+
       async function authorize(data) {
-        localStorage.setItem('luc.auth', JSON.stringify(data));
+        setAuth(data);
         if (cliCode) {
           const result = await fetch('/api/auth/cli/complete', {
             method: 'POST',
@@ -186,7 +186,7 @@ print(<span class="s">"hello, "</span> .. name)</pre>
                 try { await authorize(auth); } catch (e) { showError(e.message); }
               };
             } else {
-              localStorage.removeItem('luc.auth');
+              clearAuth();
             }
           } catch {
             showError('Could not verify the saved account. Try again.');
@@ -195,7 +195,7 @@ print(<span class="s">"hello, "</span> .. name)</pre>
       }
 
       different?.addEventListener('click', () => {
-        localStorage.removeItem('luc.auth');
+        clearAuth();
         current.hidden = true;
         body.hidden = false;
         approve.hidden = true;

@@ -22,6 +22,10 @@ const DATA_DIR = path.join(ROOT, 'data');
 const DB_FILE = path.join(DATA_DIR, 'packages.json');
 const USERS_FILE = path.join(DATA_DIR, 'users.json');
 const ARTIFACT_DIR = path.join(DATA_DIR, 'artifacts');
+const AVATAR_DIR = path.join(DATA_DIR, 'avatars');
+const SESSIONS_FILE = path.join(DATA_DIR, 'sessions.json');
+const MAX_AVATAR = 2 * 1024 * 1024;
+const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 const PORT = Number(process.env.PORT) || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
 
@@ -119,6 +123,16 @@ async function loadDb() {
     await persistUsers();
   }
   await fsp.mkdir(ARTIFACT_DIR, { recursive: true });
+  await fsp.mkdir(AVATAR_DIR, { recursive: true });
+  try {
+    const rawSessions = JSON.parse(await fsp.readFile(SESSIONS_FILE, 'utf8'));
+    const now = Date.now();
+    for (const [token, session] of Object.entries(rawSessions || {})) {
+      if (session && session.expiresAt > now && users.some((u) => u.id === session.userId)) sessions.set(token, session);
+    }
+  } catch (err) {
+    if (err.code !== 'ENOENT') console.warn('[luc] could not read sessions.json:', err.message);
+  }
   console.log(`[luc] registry ready with ${db.length} packages`);
 }
 
@@ -148,10 +162,27 @@ function persistUsers() {
   return write;
 }
 
+let sessionWriteQueue = Promise.resolve();
+function persistSessions() {
+  const snapshot = JSON.stringify(Object.fromEntries(sessions));
+  sessionWriteQueue = sessionWriteQueue.then(async () => {
+    const tmp = `${SESSIONS_FILE}.${process.pid}.tmp`;
+    await fsp.writeFile(tmp, snapshot);
+    await fsp.rename(tmp, SESSIONS_FILE);
+  }).catch((err) => console.error('[luc] failed to persist sessions:', err));
+  return sessionWriteQueue;
+}
+
 function createSession(user) {
   const token = crypto.randomBytes(32).toString('hex');
   sessions.set(token, { userId: user.id, expiresAt: Date.now() + 14 * 24 * 60 * 60 * 1000 });
+  persistSessions();
   return token;
+}
+
+function bearerToken(req) {
+  const match = (req.headers.authorization || '').match(/^Bearer ([a-f0-9]{64})$/i);
+  return match ? match[1] : '';
 }
 
 function sessionUser(req) {
@@ -160,14 +191,53 @@ function sessionUser(req) {
   if (!match) return null;
   const session = sessions.get(match[1]);
   if (!session || session.expiresAt <= Date.now()) {
-    sessions.delete(match[1]);
+    if (sessions.delete(match[1])) persistSessions();
     return null;
   }
   return users.find((user) => user.id === session.userId) || null;
 }
 
+function avatarUrl(user) {
+  return user.avatar ? `/api/avatars/${encodeURIComponent(user.username)}?v=${user.avatarVersion || 1}` : '';
+}
+
 function publicUser(user) {
-  return { username: user.username, email: user.email || '' };
+  return {
+    username: user.username,
+    email: user.email || '',
+    displayName: user.displayName || '',
+    bio: user.bio || '',
+    website: user.website || '',
+    location: user.location || '',
+    avatarUrl: avatarUrl(user),
+    hasPassword: Boolean(user.passwordHash),
+    google: Boolean(user.googleId),
+    createdAt: user.createdAt || ''
+  };
+}
+
+function readRaw(req, limit) {
+  return new Promise((resolve, reject) => {
+    let size = 0;
+    const chunks = [];
+    req.on('data', (chunk) => {
+      size += chunk.length;
+      if (size > limit) {
+        reject(Object.assign(new Error('Image is larger than 2 MB.'), { status: 413 }));
+        req.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
+    req.on('end', () => resolve(Buffer.concat(chunks)));
+    req.on('error', reject);
+  });
+}
+
+function pngSize(buf) {
+  // IHDR chunk: width/height are big-endian uint32 at offsets 16 and 20.
+  if (buf.length < 24 || !buf.subarray(0, 8).equals(PNG_SIGNATURE) || buf.toString('ascii', 12, 16) !== 'IHDR') return null;
+  return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) };
 }
 
 function sessionResponse(user) {
@@ -343,10 +413,152 @@ async function handleApi(req, res, url) {
   if (req.method === 'OPTIONS') {
     res.writeHead(204, {
       'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-File-Name'
     });
     return res.end();
+  }
+
+  /* GET /api/avatars/:username — public PNG avatar */
+  if (parts[1] === 'avatars' && parts.length === 3 && (req.method === 'GET' || req.method === 'HEAD')) {
+    const name = decodeURIComponent(parts[2]).toLowerCase();
+    const owner = users.find((u) => u.username.toLowerCase() === name);
+    if (!owner || !owner.avatar) return fail(res, 404, 'No avatar.');
+    try {
+      const data = await fsp.readFile(path.join(AVATAR_DIR, path.basename(owner.avatar)));
+      res.writeHead(200, {
+        'Content-Type': 'image/png',
+        'Content-Length': data.length,
+        'Cache-Control': 'public, max-age=86400',
+        'X-Content-Type-Options': 'nosniff'
+      });
+      return res.end(req.method === 'HEAD' ? undefined : data);
+    } catch {
+      return fail(res, 404, 'No avatar.');
+    }
+  }
+
+  /* /api/account/* — signed-in profile management */
+  if (parts[1] === 'account') {
+    const user = sessionUser(req);
+    if (!user) return fail(res, 401, 'Sign in to continue.');
+
+    if (parts.length === 2 && req.method === 'GET') {
+      return json(res, 200, { user: publicUser(user) });
+    }
+
+    if (parts.length === 2 && req.method === 'PATCH') {
+      const body = await readBody(req);
+      const fields = {};
+      const displayName = cleanText(body.displayName, 50);
+      const bio = cleanText(body.bio, 200);
+      const location = cleanText(body.location, 60);
+      const website = cleanText(body.website, 200);
+      const email = cleanText(body.email, 120);
+      if (website && !isHttpUrl(website)) fields.website = 'Website must start with http:// or https://';
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) fields.email = 'Enter a valid email address.';
+      if (user.googleId && email.toLowerCase() !== String(user.email || '').toLowerCase()) {
+        fields.email = 'Email is managed by your Google account.';
+      }
+
+      let username = user.username;
+      if (typeof body.username === 'string') {
+        const wanted = cleanText(body.username, 32).toLowerCase();
+        if (wanted !== user.username) {
+          if (!/^[a-z][a-z0-9_-]{2,31}$/.test(wanted)) fields.username = '3–32 characters: letters, numbers, _ or -. Start with a letter.';
+          else if (users.some((u) => u.id !== user.id && u.username.toLowerCase() === wanted)) fields.username = 'That username is already taken.';
+          else username = wanted;
+        }
+      }
+      if (Object.keys(fields).length) return fail(res, 422, 'Please fix the highlighted fields.', fields);
+
+      if (username !== user.username) {
+        const previous = user.username;
+        // Keep package authorship in sync with the new handle.
+        let touched = false;
+        for (const pkg of db) {
+          if (pkg.ownerKey === user.id && pkg.author && pkg.author.handle === previous) {
+            pkg.author.handle = username;
+            if (pkg.author.name === previous) pkg.author.name = username;
+            touched = true;
+          }
+        }
+        user.username = username;
+        if (touched) await persist();
+      }
+      user.displayName = displayName;
+      user.bio = bio;
+      user.location = location;
+      user.website = website;
+      if (!user.googleId) user.email = email;
+      await persistUsers();
+      return json(res, 200, { user: publicUser(user) });
+    }
+
+    if (parts[2] === 'avatar' && req.method === 'POST') {
+      const type = String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase();
+      if (type !== 'image/png') return fail(res, 415, 'Only .png images are supported.');
+      const data = await readRaw(req, MAX_AVATAR);
+      const size = pngSize(data);
+      if (!size) return fail(res, 415, 'That file is not a valid PNG image.');
+      if (size.width > 1024 || size.height > 1024) return fail(res, 422, 'Avatar must be at most 1024×1024. Crop it first.');
+      const name = `${user.id}.png`;
+      await fsp.writeFile(path.join(AVATAR_DIR, name), data);
+      user.avatar = name;
+      user.avatarVersion = (Number(user.avatarVersion) || 0) + 1;
+      await persistUsers();
+      return json(res, 200, { user: publicUser(user) });
+    }
+
+    if (parts[2] === 'avatar' && req.method === 'DELETE') {
+      if (user.avatar) {
+        await fsp.rm(path.join(AVATAR_DIR, path.basename(user.avatar)), { force: true });
+        user.avatar = '';
+        await persistUsers();
+      }
+      return json(res, 200, { user: publicUser(user) });
+    }
+
+    if (parts[2] === 'password' && req.method === 'POST') {
+      const body = await readBody(req);
+      const current = typeof body.currentPassword === 'string' ? body.currentPassword : '';
+      const next = typeof body.newPassword === 'string' ? body.newPassword : '';
+      if (user.passwordHash) {
+        const candidate = crypto.scryptSync(current, user.salt, 64);
+        const stored = Buffer.from(user.passwordHash, 'hex');
+        if (stored.length !== candidate.length || !crypto.timingSafeEqual(stored, candidate)) {
+          return fail(res, 401, 'Current password is incorrect.', { currentPassword: 'Current password is incorrect.' });
+        }
+      }
+      if (next.length < 8 || next.length > 128) {
+        return fail(res, 422, 'New password must be 8–128 characters.', { newPassword: 'Use 8–128 characters.' });
+      }
+      user.salt = crypto.randomBytes(16).toString('hex');
+      user.passwordHash = crypto.scryptSync(next, user.salt, 64).toString('hex');
+      // Sign out every other session.
+      const keep = bearerToken(req);
+      for (const [token, session] of sessions) {
+        if (session.userId === user.id && token !== keep) sessions.delete(token);
+      }
+      await persistUsers();
+      await persistSessions();
+      return json(res, 200, { ok: true, user: publicUser(user) });
+    }
+
+    if (parts.length === 2 && req.method === 'DELETE') {
+      const body = await readBody(req);
+      if (cleanText(body.confirm, 32).toLowerCase() !== user.username) {
+        return fail(res, 422, 'Type your username to confirm.', { confirm: 'Type your username to confirm.' });
+      }
+      if (user.avatar) await fsp.rm(path.join(AVATAR_DIR, path.basename(user.avatar)), { force: true });
+      users = users.filter((u) => u.id !== user.id);
+      for (const [token, session] of sessions) if (session.userId === user.id) sessions.delete(token);
+      await persistUsers();
+      await persistSessions();
+      return json(res, 200, { ok: true });
+    }
+
+    return fail(res, 404, 'Unknown account route.');
   }
 
   if (parts[1] === 'auth') {
@@ -403,8 +615,8 @@ async function handleApi(req, res, url) {
     }
 
     if (parts[2] === 'logout' && req.method === 'POST') {
-      const match = (req.headers.authorization || '').match(/^Bearer ([a-f0-9]{64})$/i);
-      if (match) sessions.delete(match[1]);
+      const token = bearerToken(req);
+      if (token && sessions.delete(token)) await persistSessions();
       return json(res, 200, { ok: true });
     }
 

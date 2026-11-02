@@ -29,6 +29,11 @@ preview sandbox).
 | `#/packages` | Searchable registry with tag filters and sorting |
 | `#/packages/:slug` | Package page: metadata, README, install line, weekly downloads, checksums, versions |
 | `#/publish` | Live-preview publishing form with validation |
+| `#/login`, `#/register` | Sign in / create an account |
+| `#/settings` | Account settings: profile, PNG avatar with crop tool, email, password, delete account |
+
+When signed in, the header's **Get Started** button is replaced by the user's
+avatar (uploaded picture, or initials). Clicking it opens `#/settings`.
 
 Everything is a hash route, so the site works from any static file server too.
 
@@ -69,6 +74,18 @@ an authorized redirect URI and set both variables before starting the server.
 | `GET` | `/api/packages/:slug/file` | Download package `.luic` artifact |
 | `GET` | `/api/stats` | Registry totals |
 | `GET` | `/api/licenses` | Accepted license ids |
+| `GET` | `/api/account` | Signed-in profile |
+| `PATCH` | `/api/account` | Update `displayName`, `username`, `bio`, `location`, `website`, `email` (`422 { fields }` on errors) |
+| `POST` | `/api/account/avatar` | Upload avatar — body is raw `image/png`, ≤ 2 MB, ≤ 1024×1024 (PNG signature is verified) |
+| `DELETE` | `/api/account/avatar` | Remove avatar |
+| `POST` | `/api/account/password` | `{ currentPassword, newPassword }` — signs out other sessions |
+| `DELETE` | `/api/account` | `{ confirm: "<username>" }` — delete the account |
+| `GET` | `/api/avatars/:username` | Public avatar PNG |
+
+Avatars are PNG only. In the browser, a PNG that is non-square or bigger than
+512 px opens a crop dialog (drag, scroll/slider zoom, arrow keys) and is
+exported at 512×512 before upload. Sessions are stored in
+`data/sessions.json`, so sign-ins survive a server restart.
 
 The local demo registry supports username/password accounts and optional Google
 OAuth. Package metadata is validated (`name`, semver, summary length, URL
@@ -83,12 +100,19 @@ website/
 ├── data/packages.json     # generated registry state (git-ignored)
 ├── data/users.json        # generated account hashes (git-ignored)
 ├── data/artifacts/        # uploaded .luic files (git-ignored)
+├── data/avatars/          # user avatar PNGs (git-ignored)
+├── data/sessions.json     # active sign-in sessions (git-ignored)
 └── public/
     ├── index.html         # shell, header, boot screen, footer
     ├── css/styles.css     # design system, components, responsive rules, light/dark themes
     ├── css/home-refresh.css # landing layout, shared chrome and cream/dark palette
     ├── css/pages-refresh.css # landing-style layer for download, guide, community, packages, publish
+    ├── css/auth.css       # login / register
+    ├── css/account.css    # header avatar, settings page, crop modal
+    ├── css/registry.css   # packages page (Popular / Discover / By the numbers + list)
     ├── js/app.js          # hash router + page lifecycle
+    ├── js/lib/session.js  # signed-in state, header avatar, authFetch
+    ├── js/pages/settings.js # settings page + avatar crop tool
     ├── js/lib/            # icons, syntax highlighting, Markdown, shared UI (copy, toast, reveal)
     ├── js/pages/          # one module per page (home-refresh.js is the landing page)
     └── assets/            # logo, social card, self-hosted woff2 fonts

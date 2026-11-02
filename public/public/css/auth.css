@@ -62,25 +62,6 @@ html body #auth-page .auth-aside::before {
   background: radial-gradient(circle, rgba(239, 97, 48, .45), transparent 65%);
   pointer-events: none;
 }
-html body #auth-page .auth-aside-brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  color: #f2efdf;
-  text-decoration: none;
-  font: 700 22px var(--font-display);
-  letter-spacing: -.04em;
-}
-html body #auth-page .auth-aside-brand span {
-  display: grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 9px;
-  background: var(--lr-orange);
-  color: #fff;
-  font-size: 17px;
-}
 html body #auth-page .auth-aside-kicker {
   margin: 0 0 12px;
   color: var(--lr-lime);

@@ -4,3 +4,6 @@ data/users.json.*.tmp
 data/artifacts/
 data/*.tmp
 node_modules/
+data/avatars/
+data/sessions.json
+data/sessions.json.*.tmp

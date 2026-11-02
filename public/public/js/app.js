@@ -5,6 +5,8 @@ import { renderGuide } from './pages/guide.js';
 import { renderCommunity } from './pages/community.js';
 import { renderPackages, renderPackageDetail, renderPublish } from './pages/packages.js';
 import { renderAuth } from './pages/auth.js';
+import { renderSettings } from './pages/settings.js';
+import { setupSessionChrome } from './lib/session.js';
 
 const routes = [
   {
@@ -58,6 +60,11 @@ const routes = [
     path: '/register',
     nav: '',
     render: (params) => renderAuth('register', params)
+  },
+  {
+    path: '/settings',
+    nav: '',
+    render: (params) => renderSettings(params)
   }
 ];
 
@@ -180,6 +187,7 @@ async function renderRoute() {
 }
 
 setupChrome();
+setupSessionChrome();
 document.body.classList.add('site-refresh');
 const pageKeyFromPath = (path) => (path === '/' ? 'home' : (path.split('/')[1] || 'home'));
 window.addEventListener('hashchange', renderRoute);
