@@ -260,8 +260,8 @@
     "accent": "#ffb066",
     "size": "core",
     "readme": "## libs\n\nThe user-library system is part of the core interpreter. Import it, then use\n`make`, `get`, `pack` and `command`.\n\n### Write a part\n\n```luc\nimport libs\nmake add\n\ncreate function plus(a, b)\n    return a + b\nend\n\ncreate tag = \"A\"\n```\n\nEvery top-level `create` is exported automatically.\n\n### Bundle parts\n\n```luc\nimport libs\nget add, sub\npack mymath\n```\n\nThis writes `mymath.luic` next to your script. Share that single file.\n\n### Use a bundle\n\n```luc\nimport libs\nimport add from mymath\nimport plus from mymath\n\nprint(add.plus(3, 4))  -- 7\nprint(plus(1, 2))      -- 3\n```\n\n`get` searches next to your script, the working directory, `luc_modules/`\nand `LUC_PATH`.",
-    "weeklyDownloads": 21600,
-    "totalDownloads": 412700,
+    "weeklyDownloads": 21601,
+    "totalDownloads": 412701,
     "downloadsHistory": [
       16848,
       18576,
@@ -269,7 +269,7 @@
       20520,
       21600,
       19872,
-      23328
+      23329
     ],
     "publishedAt": "2026-02-10",
     "updatedAt": "2026-08-12",
